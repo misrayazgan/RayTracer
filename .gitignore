@@ -8,6 +8,7 @@
 # input output directories
 SampleScenes
 SampleOutputs
+water_animation
 
 # build directories
 .vs
