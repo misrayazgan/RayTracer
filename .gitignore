@@ -1,6 +1,7 @@
 # output image files
 *.png
 *.exr
+*.mp4
 
 # input files
 *.xml
