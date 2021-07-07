@@ -3,6 +3,7 @@
 
 #include "Vec2f.h"
 #include "Ray.h"
+#include "Hit.h"
 #include "BoundingBox.h"
 #include "Matrix4f.h"
 #include "Texture.h"

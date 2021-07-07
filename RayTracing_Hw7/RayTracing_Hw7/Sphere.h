@@ -9,6 +9,7 @@ class Sphere : public Object
 {
 public:
 	const int centerVertexId;
+	Vec3f center;
 	float radius;
 
 	Sphere(const Scene* scene_, const int center_, float radius_, int material_, Texture* texture_, Texture* normalTexture_,

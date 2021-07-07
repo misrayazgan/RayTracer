@@ -18,7 +18,7 @@ int main()
 	scene.renderScene();*/
 
 	Scene scene;
-	std::string filepath = "SampleScenes/directLighting/cornellbox_jaroslav_glossy_area_sphere.xml";
+	std::string filepath = "SampleScenes/directLighting/cornellbox_jaroslav_glossy_area_small.xml";
 	//std::string filepath = "SampleScenes/veach_ajar/scene.xml";
 
 	scene.loadSceneFromXml(filepath);

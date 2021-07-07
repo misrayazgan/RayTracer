@@ -5,7 +5,7 @@ Sphere::Sphere(const Scene* scene_, const int center_, float radius_, int materi
 	const Matrix4f& matrix_, bool transform_, const Vec3f& motionVector_, bool motion_)
 	: Object(scene_, material_, texture_, normalTexture_, matrix_, transform_, motionVector_, motion_), centerVertexId(center_), radius(radius_)
 {
-	Vec3f center = scene->vertexData[centerVertexId].position;
+	center = scene->vertexData[centerVertexId].position;
 	Vec3f r = Vec3f(radius, radius, radius);
 	Vec3f minCorner = center - r;
 	Vec3f maxCorner = center + r;
@@ -31,7 +31,6 @@ bool Sphere::intersection(const Ray& ray, Hit& hit)
 	bool result = false;
 
 	Ray transformedRay = transformRay(ray);
-	Vec3f center = scene->vertexData[centerVertexId].position;
 
 	float a = transformedRay.direction.dotProduct(transformedRay.direction);
 	float b = 2 * transformedRay.direction.dotProduct(transformedRay.origin - center);

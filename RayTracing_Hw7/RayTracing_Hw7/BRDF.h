@@ -3,6 +3,7 @@
 
 #include "Vec3f.h"
 #include "Ray.h"
+#include "Hit.h"
 #include "Material.h"
 
 class BRDF

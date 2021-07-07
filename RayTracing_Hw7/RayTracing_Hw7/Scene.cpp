@@ -214,8 +214,7 @@ Vec3f Scene::findPixelColor(const Ray& ray, const Camera& camera, int depth, int
 {
 	Vec3f color = Vec3f();
 
-	Hit hitResult;
-	hitResult.t = kInf;
+	Hit hitResult = Hit();
 	bool result = bvh->intersection(ray, hitResult);
 
 	if (result == true)
@@ -255,13 +254,12 @@ Vec3f Scene::findPixelColor(const Ray& ray, const Camera& camera, int depth, int
 				shadowRay.direction = wi;
 				shadowRay.time = ray.time;
 
-				Hit shadowHit;
-				shadowHit.t = kInf;
+				Hit shadowHit = Hit();
 				bool shadowResult = bvh->intersection(shadowRay, shadowHit);
 
 				float tLight = currentLight->calculateDistance(hitResult.intersectionPoint);
 				bool shadow = false;
-				if (shadowResult == true && shadowHit.t < tLight - testEpsilon && shadowHit.t > 0.0f)
+				if (shadowResult == true && shadowHit.lightObject != currentLight && shadowHit.t < tLight - testEpsilon && shadowHit.t > 0.0f)
 				{
 					shadow = true;
 				}

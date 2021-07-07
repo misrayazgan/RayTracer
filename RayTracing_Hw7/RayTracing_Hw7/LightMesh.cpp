@@ -56,11 +56,6 @@ Vec3f LightMesh::calculateWi(const Vec3f& intersectionPoint, const Vec3f& normal
 		}
 	}
 
-	/*if (triangle == NULL)
-	{
-		triangle = dynamic_cast<Triangle*>(triangles[triangles.size() - 1]);
-	}*/
-
 	// Transform vertices of the triangle.
 	Vec3f a = scene->vertexData[triangle->v0].position;
 	Vec3f b = scene->vertexData[triangle->v1].position;
@@ -78,7 +73,6 @@ Vec3f LightMesh::calculateWi(const Vec3f& intersectionPoint, const Vec3f& normal
 
 	// Calculate p(w)
 	float rSquare = (q - intersectionPoint).lengthSquared();
-	// triangle'ýn normali dogru mu transformation yapýlmýs halini almak gerekir mi area gibi????????
 	float cosTheta = std::max(0.001f, triangle->normal.dotProduct(intersectionPoint - q));
 	pw = rSquare / (totalArea * cosTheta);
 
@@ -88,11 +82,7 @@ Vec3f LightMesh::calculateWi(const Vec3f& intersectionPoint, const Vec3f& normal
 
 float LightMesh::calculateDistance(const Vec3f& intersectionPoint)
 {
-	// IS THIS EPSILON TRUE??? WHAT ABOUT THE CHECK IN INTERSECTION?????
-	// distance icin degil t icin kaydirmak lazim q yu
-	// kendi kendiyle kesisiyor lightMesh
-	// ayni lightMeshten gelen rayleri ignorelasak
-	float dist = (q - 0.01 * wi - intersectionPoint).length();
+	float dist = (q - scene->shadowRayEpsilon * wi - intersectionPoint).length();
 	return dist;
 }
 
@@ -107,8 +97,7 @@ bool LightMesh::intersection(const Ray& ray, Hit& hit)
 	bool result = Mesh::intersection(ray, hit);
 	hit.isLight = true;
 	hit.radiance = radiance;
+	hit.lightObject = this;
 
 	return result;
-
-	//return false;
 }

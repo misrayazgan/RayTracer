@@ -1,0 +1,16 @@
+# output image files
+*.png
+*.exr
+
+# input files
+*.xml
+
+# input output directories
+SampleScenes
+SampleOutputs
+
+# build directories
+.vs
+x64
+Debug
+

@@ -66,8 +66,7 @@ bool BVH::intersection(const Ray& ray, Hit& hit)
 
 	if (left)
 	{
-		Hit hitLeft;
-		hitLeft.t = kInf;
+		Hit hitLeft = Hit();
 		bool leftResult = left->intersection(ray, hitLeft);
 		if (leftResult == true && hitLeft.t < hit.t && hitLeft.t > 0.0f)
 		{
@@ -78,8 +77,7 @@ bool BVH::intersection(const Ray& ray, Hit& hit)
 
 	if (right)
 	{
-		Hit hitRight;
-		hitRight.t = kInf;
+		Hit hitRight = Hit();
 		bool rightResult = right->intersection(ray, hitRight);
 		if (rightResult == true && hitRight.t < hit.t && hitRight.t > 0.0f)
 		{
