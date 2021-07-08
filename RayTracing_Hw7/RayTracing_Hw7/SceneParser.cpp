@@ -1,4 +1,7 @@
 #include "Scene.h"
+#include <sstream>
+#include <stdexcept>
+#include <iostream>
 
 void Scene::loadSceneFromXml(const std::string& filepath)
 {
@@ -226,6 +229,16 @@ void Scene::loadSceneFromXml(const std::string& filepath)
 				stream << "1" << std::endl;
 			}
 
+			child = element->FirstChildElement("Renderer");
+			if (child)
+			{
+				stream << child->GetText() << std::endl;
+			}
+			else
+			{
+				stream << "DirectLighting" << std::endl;
+			}
+
 			stream >> camera.position.x >> camera.position.y >> camera.position.z;
 			Vec3f gazePoint;
 			stream >> gazePoint.x >> gazePoint.y >> gazePoint.z;
@@ -252,6 +265,33 @@ void Scene::loadSceneFromXml(const std::string& filepath)
 			camera.right = camera.top * (float(camera.imageWidth) / float(camera.imageHeight));
 			camera.bottom = -1 * camera.top;
 			camera.left = -1 * camera.right;
+
+			// Set renderer
+			std::string renderingMode;
+			stream >> renderingMode;
+
+			if (renderingMode == "DirectLighting")
+			{
+				camera.renderingMode = RENDERINGMODE_RAYTRACING;
+			}
+			else if (renderingMode == "PathTracing")
+			{
+				camera.renderingMode = RENDERINGMODE_PATHTRACING;
+			}
+
+			// Get renderer parameters
+			camera.nextEventEstimation = false;
+			camera.russianRoulette = false;
+			camera.importanceSampling = false;
+
+			child = element->FirstChildElement("RendererParams");
+			if (child)
+			{
+				if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+				{
+					getRendererParams(child, stream, camera);
+				}
+			}
 
 			// Get Tonemap
 			camera.tonemap = Tonemap();
@@ -1515,6 +1555,34 @@ void Scene::applyTransformations(tinyxml2::XMLElement* element, std::stringstrea
 			break;
 		default:
 			break;
+		}
+	}
+
+	stream.clear();
+}
+
+void Scene::getRendererParams(tinyxml2::XMLElement* element, std::stringstream& stream, Camera& camera)
+{
+	std::string param;
+
+	// Check if rendererParams are specified.
+	if (element->GetText())
+	{
+		stream << element->GetText() << std::endl;
+		while (stream >> param)
+		{
+			if (param == "NextEventEstimation")
+			{
+				camera.nextEventEstimation = true;
+			}
+			else if (param == "RussianRoulette")
+			{
+				camera.russianRoulette = true;
+			}
+			else if (param == "ImportanceSampling")
+			{
+				camera.importanceSampling = true;
+			}
 		}
 	}
 

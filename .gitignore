@@ -5,6 +5,7 @@
 
 # input files
 *.xml
+*.ply
 
 # input output directories
 SampleScenes

@@ -11,6 +11,12 @@ enum Orientation
 	ORIENTATION_LEFTHANDED
 };
 
+enum RenderingMode
+{
+	RENDERINGMODE_RAYTRACING = 0,
+	RENDERINGMODE_PATHTRACING
+};
+
 class Camera
 {
 public:
@@ -30,7 +36,11 @@ public:
 	float apertureSize;
 	float focusDistance;
 	Tonemap tonemap;
-	Orientation orientation;
+	Orientation orientation;	// right-handed or left-handed
+	RenderingMode renderingMode;
+	bool nextEventEstimation;
+	bool russianRoulette;
+	bool importanceSampling;
 
 	Camera() {}
 	Camera(Vec3f p, Vec3f g, Vec3f v, float l, float r, float b, float t, float d, int w, int h, std::string n, int ns, float as, float fd, const Tonemap& tm, const Orientation& ori)
