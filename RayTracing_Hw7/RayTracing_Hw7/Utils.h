@@ -5,7 +5,7 @@
 #include <iostream>
 
 template <typename T>
-void printTimeDuration(T start, T end)
+void printTimeDuration(const std::string& imageName, T start, T end)
 {
 	auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
@@ -21,7 +21,7 @@ void printTimeDuration(T start, T end)
 	diff /= 24;
 	auto const days = diff;
 	
-	std::cout << "Image is rendered in ";
+	std::cout << imageName << " is rendered in ";
 
 	bool printedEarlier = false;
 	if (days >= 1) {
@@ -53,6 +53,7 @@ void printTimeDuration(T start, T end)
 		printedEarlier = true;
 		std::cout << usecs << (1 != usecs ? " usecs" : " usec");
 	}
+	std::cout << std::endl;
 }
 
 #endif

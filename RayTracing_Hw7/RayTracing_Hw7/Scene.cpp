@@ -36,7 +36,7 @@ void Scene::renderScene()
 		}
 
 		auto end = std::chrono::system_clock::now();
-		printTimeDuration(start, end);
+		printTimeDuration(currentCamera.imageName, start, end);
 
 		Image image = Image(width, height, pixelColors);
 		image.writeImage(currentCamera.imageName, currentCamera.tonemap);
@@ -94,7 +94,15 @@ Vec3f Scene::renderPixelMultisampling(const Camera& camera, int i, int j)
 	for (int r = 0; r < raysPerPixel.size(); r++)
 	{
 		Ray ray = raysPerPixel[r];
-		color += findPixelColor(ray, camera, maxRecursionDepth, i, j);
+
+		if (camera.renderingMode == RENDERINGMODE_RAYTRACING)
+		{
+			color += findPixelColor(ray, camera, maxRecursionDepth, i, j);
+		}
+		else if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+		{
+			color += findPixelColorPathTracing(ray, camera, maxRecursionDepth, i, j);
+		}
 	}
 
 	color = color / camera.numberOfSamples;
@@ -163,7 +171,16 @@ Vec3f Scene::renderPixel(const Camera& camera, int i, int j)
 {
 	float time = distribution(randGenerator);
 	Ray ray = generateRay(camera, i, j, time);
-	Vec3f color = findPixelColor(ray, camera, maxRecursionDepth, i, j);
+	
+	Vec3f color = Vec3f();
+	if (camera.renderingMode == RENDERINGMODE_RAYTRACING)
+	{
+		color = findPixelColor(ray, camera, maxRecursionDepth, i, j);
+	}
+	else if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+	{
+		color = findPixelColorPathTracing(ray, camera, maxRecursionDepth, i, j);
+	}	
 
 	return color;
 }
@@ -243,29 +260,13 @@ Vec3f Scene::findPixelColor(const Ray& ray, const Camera& camera, int depth, int
 			for (int i = 0; i < lights.size(); i++)
 			{
 				Light *currentLight = lights[i];
-
-				/**********Shadow check**********/
-				Vec3f wi = currentLight->calculateWi(hitResult.intersectionPoint, hitResult.normal);
-				Ray shadowRay = Ray();
-				shadowRay.origin = hitResult.intersectionPoint + shadowRayEpsilon * hitResult.normal;
-				shadowRay.direction = wi;
-				shadowRay.time = ray.time;
-
-				Hit shadowHit = Hit();
-				bool shadowResult = bvh->intersection(shadowRay, shadowHit);
-
-				float tLight = currentLight->calculateDistance(hitResult.intersectionPoint);
-				bool shadow = false;
-				if (shadowResult == true && shadowHit.lightObject != currentLight && shadowHit.t < tLight - testEpsilon && shadowHit.t > 0.0f)
-				{
-					shadow = true;
-				}
+				bool shadow = shadowCheck(currentLight, ray, hitResult);				
 
 				if (shadow == false)
 				{
+					Vec3f wi = currentLight->calculateWi(hitResult.intersectionPoint, hitResult.normal);
 					Vec3f irradiance = currentLight->calculateIrradiance(hitResult.intersectionPoint);
 
-					// Object is not a light.
 					if (material.brdfId > -1)
 					{
 						// BRDF exists
@@ -344,6 +345,28 @@ Vec3f Scene::getBackgroundColor(int i, int j, const Ray& ray) const
 	return color;
 }
 
+bool Scene::shadowCheck(Light* light, const Ray& ray, const Hit& hitResult)
+{
+	bool shadow = false;
+	Vec3f wi = light->calculateWi(hitResult.intersectionPoint, hitResult.normal);
+
+	Ray shadowRay = Ray();
+	shadowRay.origin = hitResult.intersectionPoint + shadowRayEpsilon * hitResult.normal;
+	shadowRay.direction = wi;
+	shadowRay.time = ray.time;
+
+	Hit shadowHit = Hit();
+	bool shadowResult = bvh->intersection(shadowRay, shadowHit);
+
+	float tLight = light->calculateDistance(hitResult.intersectionPoint);
+	if (shadowResult == true && shadowHit.lightObject != light && shadowHit.t < tLight - testEpsilon && shadowHit.t > 0.0f)
+	{
+		shadow = true;
+	}
+
+	return shadow;
+}
+
 Vec3f Scene::diffuseShading(const Vec3f& irradiance, const Vec3f& wi, const Hit& hit, const Material& material, const Texture* texture)
 {
 	Vec3f diffuse = Vec3f();
@@ -411,7 +434,14 @@ Vec3f Scene::getReflectionColor(const Ray& ray, const Hit& hitResult, const Mate
 	mirrorRay.direction = wr;
 	mirrorRay.time = ray.time;
 
-	color = material.mirror * findPixelColor(mirrorRay, camera, depth - 1);
+	if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+	{
+		color = material.mirror * findPixelColorPathTracing(mirrorRay, camera, depth - 1);
+	}
+	else
+	{
+		color = material.mirror * findPixelColor(mirrorRay, camera, depth - 1);
+	}
 	return color;
 }
 
@@ -459,7 +489,15 @@ Vec3f Scene::getRefractionColor(const Ray& ray, const Hit& hitResult, const Mate
 		reflectionRay.isInsideObject = true;
 		reflectionRay.time = ray.time;
 
-		Vec3f reflectionColor = findPixelColor(reflectionRay, camera, depth - 1);
+		Vec3f reflectionColor = Vec3f();
+		if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+		{
+			reflectionColor = findPixelColorPathTracing(reflectionRay, camera, depth - 1);
+		}
+		else
+		{
+			reflectionColor = findPixelColor(reflectionRay, camera, depth - 1);
+		}
 		color = transparency * reflectionColor;
 	}
 	else
@@ -471,7 +509,15 @@ Vec3f Scene::getRefractionColor(const Ray& ray, const Hit& hitResult, const Mate
 		// If entering ray, refraction is inside. Else, outside.
 		refractionRay.isInsideObject = entering;
 
-		Vec3f refractionColor = findPixelColor(refractionRay, camera, depth - 1);
+		Vec3f refractionColor = Vec3f();
+		if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+		{
+			refractionColor = findPixelColorPathTracing(refractionRay, camera, depth - 1);
+		}
+		else
+		{
+			refractionColor = findPixelColor(refractionRay, camera, depth - 1);
+		}
 
 		Ray reflectionRay = Ray();
 		reflectionRay.origin = hitResult.intersectionPoint + shadowRayEpsilon * wr;
@@ -480,7 +526,15 @@ Vec3f Scene::getRefractionColor(const Ray& ray, const Hit& hitResult, const Mate
 		// If entering ray, reflection is outside. Else, inside.
 		reflectionRay.isInsideObject = !entering;
 
-		Vec3f reflectionColor = findPixelColor(reflectionRay, camera, depth - 1);
+		Vec3f reflectionColor = Vec3f();
+		if (camera.renderingMode == RENDERINGMODE_PATHTRACING)
+		{
+			reflectionColor = findPixelColorPathTracing(reflectionRay, camera, depth - 1);
+		}
+		else
+		{
+			reflectionColor = findPixelColor(reflectionRay, camera, depth - 1);
+		}
 		color = transparency * ((fr * reflectionColor) + (refractionColor * ft));
 	}
 
@@ -563,7 +617,7 @@ Vec3f Scene::findPixelColorPathTracing(const Ray& ray, const Camera& camera, int
 
 		if (hitResult.isLight == true)
 		{
-			if (camera.nextEventEstimation == true)		// AND RAY IS INDIRECT?????????
+			if (camera.nextEventEstimation == true && ray.indirect == true)
 			{
 				return color;
 			}
@@ -592,11 +646,44 @@ Vec3f Scene::findPixelColorPathTracing(const Ray& ray, const Camera& camera, int
 			{
 				color += getDirectLightingColor(ray, hitResult, material, texture);
 			}
-			// TO DO:
+
+			color += getIndirectLightingColor(ray, hitResult, material, texture, camera, depth, i, j);
+		}
+
+		// Specular Reflection
+		if (material.type == MATERIALTYPE_MIRROR && depth > 0)
+		{
+			color += getReflectionColor(ray, hitResult, material, camera, depth);
+		}
+
+		// Refraction
+		if (material.type == MATERIALTYPE_DIELECTRIC && depth > 0)
+		{
+			color += getRefractionColor(ray, hitResult, material, camera, depth);
+		}
+
+		// Reflection
+		if (material.type == MATERIALTYPE_CONDUCTOR && depth > 0)
+		{
+			float cosTheta = -1 * ray.direction.dotProduct(hitResult.normal);
+			float fr = findReflectionRatioConductor(cosTheta, material.refractionIndex, material.absorptionIndex);
+
+			color += fr * getReflectionColor(ray, hitResult, material, camera, depth);
 		}
 	}
-}
+	else
+	{
+		// No hit happened
+		if (maxRecursionDepth == depth)
+		{
+			// Primary ray, pixel's color is background color or background texture.
+			color = getBackgroundColor(i, j, ray);
+		}
+		// If ray is not primary ray, pixel's color is (0,0,0).
+	}
 
+	return color;
+}
 
 Vec3f Scene::getDirectLightingColor(const Ray& ray, const Hit& hitResult, const Material& material, const Texture* texture)
 {
@@ -606,29 +693,13 @@ Vec3f Scene::getDirectLightingColor(const Ray& ray, const Hit& hitResult, const 
 	for (int i = 0; i < lights.size(); i++)
 	{
 		Light *currentLight = lights[i];
-
-		/**********Shadow check**********/
-		Vec3f wi = currentLight->calculateWi(hitResult.intersectionPoint, hitResult.normal);
-		Ray shadowRay = Ray();
-		shadowRay.origin = hitResult.intersectionPoint + shadowRayEpsilon * hitResult.normal;
-		shadowRay.direction = wi;
-		shadowRay.time = ray.time;
-
-		Hit shadowHit = Hit();
-		bool shadowResult = bvh->intersection(shadowRay, shadowHit);
-
-		float tLight = currentLight->calculateDistance(hitResult.intersectionPoint);
-		bool shadow = false;
-		if (shadowResult == true && shadowHit.lightObject != currentLight && shadowHit.t < tLight - testEpsilon && shadowHit.t > 0.0f)
-		{
-			shadow = true;
-		}
-
+		bool shadow = shadowCheck(currentLight, ray, hitResult);
+		
 		if (shadow == false)
 		{
+			Vec3f wi = currentLight->calculateWi(hitResult.intersectionPoint, hitResult.normal);
 			Vec3f irradiance = currentLight->calculateIrradiance(hitResult.intersectionPoint);
 
-			// Object is not a light.
 			if (material.brdfId > -1)
 			{
 				// BRDF exists
@@ -644,6 +715,93 @@ Vec3f Scene::getDirectLightingColor(const Ray& ray, const Hit& hitResult, const 
 			}
 		}
 	}
+	return color;
+}
+
+Vec3f Scene::getIndirectLightingColor(const Ray& ray, const Hit& hitResult, const Material& material, const Texture* texture, const Camera& camera, int depth, int i, int j)
+{
+	Vec3f color = Vec3f();
+	if (camera.russianRoulette == false && depth <= 0)
+	{
+		// If russian roulette is enabled, do not check recursion depth.
+		return color;
+	}
+
+	Vec3f wi = sampleDirection(hitResult.normal, camera);
+
+	// Check if ray is terminated with Russian Roulette.
+	float cosTheta = std::max(0.001f, wi.dotProduct(hitResult.normal));
+	float q = 1.0f - cosTheta;
+	if (camera.russianRoulette == true)
+	{		
+		float rand = distribution(randGenerator);
+		if (rand <= q)
+		{
+			return color;
+		}
+	}	
+
+	Ray sampleRay = Ray();
+	sampleRay.origin = hitResult.intersectionPoint + shadowRayEpsilon * hitResult.normal;
+	sampleRay.direction = wi;
+	sampleRay.time = ray.time;
+	sampleRay.indirect = true;
+
+	Vec3f indirectRadiance = findPixelColorPathTracing(sampleRay, camera, depth - 1, i, j);
+
+	if (material.brdfId > -1)
+	{
+		// BRDF exists
+		BRDF *brdf = brdfs[material.brdfId];
+		Vec3f wo = (ray.origin - hitResult.intersectionPoint).unitVector();
+		color += brdf->getBRDFValue(hitResult, material, wi, wo, indirectRadiance);
+	}
+	else
+	{
+		Vec3f diffuse = diffuseShading(indirectRadiance, wi, hitResult, material, texture);
+		Vec3f specular = specularShading(indirectRadiance, wi, hitResult, material, ray);
+		color += diffuse + specular;
+	}
+	
+	float pw = 1.0f / (2 * PI);	// Uniform sampling
+	if (camera.importanceSampling == true)
+	{
+		pw = cosTheta / PI;
+	}
+	color = color / pw;
+
+	if (camera.russianRoulette == true)
+	{
+		color = color / (1.0f - q);
+	}
+
+	return color;
+}
+
+Vec3f Scene::sampleDirection(const Vec3f& normal, const Camera& camera)
+{
+	float e1 = distribution(randGenerator);
+	float e2 = distribution(randGenerator);
+
+	float phi = 2 * PI * e1;
+	float theta = acos(e2);	// Uniform sampling
+
+	if (camera.importanceSampling == true)
+	{
+		theta = asin(sqrt(e2));	// Importance sampling
+	}
+
+	// Construct orthonormal basis uvw.
+	Vec3f w = normal;
+	Vec3f wPrime = w;
+	int minIdx = wPrime.getAbsMinElementIndex();
+	wPrime[minIdx] = 1.0f;
+
+	Vec3f u = wPrime.crossProduct(w).unitVector();
+	Vec3f v = u.crossProduct(w).unitVector();
+
+	Vec3f wi = (w * cos(theta) + v * sin(theta) * cos(phi) + u * sin(theta) * sin(phi)).unitVector();
+	return wi;
 }
 
 Scene::~Scene()

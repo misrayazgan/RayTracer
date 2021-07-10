@@ -11,8 +11,9 @@ public:
 	Vec3f direction;
 	bool isInsideObject;
 	float time;
+	bool indirect;
 
-	Ray() : isInsideObject(false), time(0.0f) {}
+	Ray() : isInsideObject(false), time(0.0f), indirect(false) {}
 	Ray(const Vec3f& origin_, const Vec3f& direction_) : origin(origin_), direction(direction_), isInsideObject(false), time(0.0f) {}
 	Ray(const Vec3f& origin_, const Vec3f& direction_, float time_) : origin(origin_), direction(direction_), isInsideObject(false), time(time_) {}
 	Ray(const Vec3f& origin_, const Vec3f& direction_, bool inside_, float time_)
